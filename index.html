@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>健身休息助手</title>
+    <!-- PWA 支持 -->
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="健身休息助手">
+    <meta name="description" content="健身组间休息计时工具，支持自定义时长、AI互动和训练记录">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .timer {
+            font-size: 80px;
+            font-weight: bold;
+            color: #333;
+            margin: 40px 0;
+            font-family: monospace;
+        }
+        
+        .duration-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 30px 0;
+        }
+        
+        .duration-btn {
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .duration-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .control-buttons {
+            margin: 30px 0;
+        }
+        
+        .control-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .start-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .start-btn:hover {
+            background-color: #0b7dda;
+        }
+        
+        .stop-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .stop-btn:hover {
+            background-color: #d32f2f;
+        }
+        
+        .ai-section {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            text-align: left;
+        }
+        
+        .ai-message {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 5px;
+        }
+        
+        .user-message {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e8f5e8;
+            border-radius: 5px;
+            text-align: right;
+        }
+        
+        .ai-input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .ai-submit {
+            padding: 10px 20px;
+            margin-top: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .history-section {
+            margin: 30px 0;
+        }
+        
+        .history-btn {
+            padding: 10px 20px;
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .history-content {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .timer {
+                font-size: 60px;
+            }
+            
+            .duration-buttons {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>健身组间休息工具</h1>
+        
+        <div class="timer" id="timer">00:00</div>
+        
+        <div class="duration-buttons">
+            <button class="duration-btn" data-duration="30">30s</button>
+            <button class="duration-btn" data-duration="60">60s</button>
+            <button class="duration-btn" data-duration="90">90s</button>
+            <button class="duration-btn" data-duration="120">120s</button>
+            <button class="duration-btn" data-duration="180">180s</button>
+        </div>
+        
+        <div class="control-buttons">
+            <button class="control-btn start-btn" id="startBtn">开始</button>
+            <button class="control-btn stop-btn" id="stopBtn">停止</button>
+        </div>
+        
+        <div class="ai-section">
+            <h3>AI互动</h3>
+            <div id="aiMessages"></div>
+            <input type="text" class="ai-input" id="aiInput" placeholder="输入健身相关问题...">
+            <button class="ai-submit" id="aiSubmit">发送</button>
+        </div>
+        
+        <div class="history-section">
+            <h3>训练记录</h3>
+            <input type="text" class="ai-input" id="workoutInput" placeholder="输入训练内容，如：卧推 40kg×10">
+            <button class="ai-submit" id="saveWorkoutBtn">保存记录</button>
+            <button class="history-btn" id="historyBtn">查看历史</button>
+            <div class="history-content" id="historyContent" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let countdown; // 倒计时定时器
+        let remainingTime = 0; // 剩余时间（秒）
+        let isRunning = false; // 是否正在运行
+        
+        // DOM元素
+        const timerElement = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const durationBtns = document.querySelectorAll('.duration-btn');
+        const aiMessages = document.getElementById('aiMessages');
+        const aiInput = document.getElementById('aiInput');
+        const aiSubmit = document.getElementById('aiSubmit');
+        const historyBtn = document.getElementById('historyBtn');
+        const historyContent = document.getElementById('historyContent');
+        const workoutInput = document.getElementById('workoutInput');
+        const saveWorkoutBtn = document.getElementById('saveWorkoutBtn');
+        
+        // 初始化
+        function init() {
+            // 绑定时长选择按钮
+            durationBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const duration = parseInt(this.dataset.duration);
+                    setDuration(duration);
+                });
+            });
+            
+            // 绑定控制按钮
+            startBtn.addEventListener('click', startTimer);
+            stopBtn.addEventListener('click', stopTimer);
+            
+            // 绑定AI输入
+            aiSubmit.addEventListener('click', sendAIRequest);
+            aiInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendAIRequest();
+                }
+            });
+            
+            // 绑定历史记录按钮
+            historyBtn.addEventListener('click', toggleHistory);
+            
+            // 绑定保存训练记录按钮
+            saveWorkoutBtn.addEventListener('click', saveWorkout);
+            workoutInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    saveWorkout();
+                }
+            });
+            
+            // 初始化历史记录
+            loadHistory();
+            
+            // 请求通知权限
+            requestNotificationPermission();
+        }
+        
+        // 设置时长
+        function setDuration(seconds) {
+            remainingTime = seconds;
+            updateTimerDisplay();
+        }
+        
+        // 更新计时器显示
+        function updateTimerDisplay() {
+            const minutes = Math.floor(remainingTime / 60);
+            const seconds = remainingTime % 60;
+            timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // 开始计时器
+        function startTimer() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            startBtn.textContent = '暂停';
+            
+            countdown = setInterval(() => {
+                remainingTime--;
+                updateTimerDisplay();
+                
+                if (remainingTime <= 0) {
+                    stopTimer();
+                    notifyUser();
+                    generateAIMessage();
+                }
+            }, 1000);
+        }
+        
+        // 停止计时器
+        function stopTimer() {
+            clearInterval(countdown);
+            isRunning = false;
+            startBtn.textContent = '开始';
+        }
+        
+        // 请求通知权限
+        function requestNotificationPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission();
+            }
+        }
+        
+        // 通知用户
+        function notifyUser() {
+            // 使用 Web Audio API 生成提示音（不依赖外部文件）
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const playBeep = (freq, startTime, duration) => {
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sine';
+                    gainNode.gain.setValueAtTime(0.5, startTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                    oscillator.start(startTime);
+                    oscillator.stop(startTime + duration);
+                };
+                const now = audioCtx.currentTime;
+                playBeep(880, now, 0.2);
+                playBeep(880, now + 0.3, 0.2);
+                playBeep(1100, now + 0.6, 0.4);
+            } catch(e) {
+                console.warn('音频播放失败:', e);
+            }
+            
+            // 振动提醒（如果支持）
+            if ('vibrate' in navigator) {
+                navigator.vibrate([200, 100, 200, 100, 400]);
+            }
+            
+            // 通知提醒（如果支持）
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('💪 休息时间到！', {
+                    body: '该开始下一组训练了，加油！',
+                    icon: 'icon-192.png',
+                    badge: 'icon-192.png',
+                    vibrate: [200, 100, 200, 100, 400],
+                    tag: 'rest-timer'
+                });
+            }
+        }
+        
+        // AI消息历史
+        let aiMessageHistory = [];
+        
+        // 生成AI消息
+        function generateAIMessage() {
+            const systemPrompt = "你是一个健身组间休息助手，专门在用户健身休息期间提供简短、鼓励性的对话和健身相关建议。每条回复控制在1-2句话，不冗长，贴合健身场景，不分散训练注意力。";
+            
+            const userPrompt = "用户正在健身组间休息，需要一些鼓励和建议。";
+            
+            callMinimaxAPI(systemPrompt, userPrompt);
+        }
+        
+        // 发送AI请求
+        function sendAIRequest() {
+            const message = aiInput.value.trim();
+            if (!message) return;
+            
+            // 添加用户消息
+            addUserMessage(message);
+            aiInput.value = '';
+            
+            const systemPrompt = "你是一个健身组间休息助手，专门在用户健身休息期间提供简短、鼓励性的对话和健身相关建议。每条回复控制在1-2句话，不冗长，贴合健身场景，不分散训练注意力。";
+            
+            callMinimaxAPI(systemPrompt, message);
+        }
+        
+        // 调用minimax API
+        async function callMinimaxAPI(systemPrompt, userPrompt) {
+            // 注意：这里需要替换为真实的API Key
+            const apiKey = "sk-cp-0joRbAAOgJvVl50O5pV7jEk4cA-i2VvyPi6HvIuPuyXnVqEdJiFdG-vO0rleaz0_BjSnyIc5sJT2OdXW2jI52GuYBrFXFKrHl2N_EzLg6P32ei0uIcyp8VM";
+            const model = "MiniMax-M2.7";
+            
+            try {
+                // 构建消息历史
+                const messages = [
+                    { role: "system", content: systemPrompt },
+                    ...aiMessageHistory,
+                    { role: "user", content: userPrompt }
+                ];
+                
+                // 调用API
+                const response = await fetch("https://api.minimax.io/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: messages,
+                        temperature: 1.0
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API调用失败: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const aiResponse = data.choices[0].message.content;
+                
+                // 添加AI消息
+                addAIMessage(aiResponse);
+                
+                // 更新消息历史
+                aiMessageHistory.push({ role: "user", content: userPrompt });
+                aiMessageHistory.push({ role: "assistant", content: aiResponse });
+                
+                // 限制消息历史长度
+                if (aiMessageHistory.length > 10) {
+                    aiMessageHistory = aiMessageHistory.slice(-10);
+                }
+            } catch (error) {
+                console.error("AI调用错误:", error);
+                // 出错时使用备用消息
+                const fallbackMessages = [
+                    '加油！保持专注，下一组会更好！',
+                    '深呼吸，准备好下一组训练',
+                    '记得保持正确的动作姿势'
+                ];
+                const randomMessage = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
+                addAIMessage(randomMessage);
+            }
+        }
+        
+        // 添加AI消息
+        function addAIMessage(text) {
+            // 过滤掉<think>标签内容
+            const filteredText = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = 'ai-message';
+            messageElement.textContent = filteredText;
+            aiMessages.appendChild(messageElement);
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+        }
+        
+        // 添加用户消息
+        function addUserMessage(text) {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'user-message';
+            messageElement.textContent = text;
+            aiMessages.appendChild(messageElement);
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+        }
+        
+        // 切换历史记录显示
+        function toggleHistory() {
+            if (historyContent.style.display === 'none') {
+                historyContent.style.display = 'block';
+                loadHistory();
+            } else {
+                historyContent.style.display = 'none';
+            }
+        }
+        
+        // 加载历史记录
+        function loadHistory() {
+            const history = localStorage.getItem('workoutHistory') || '[]';
+            const historyArray = JSON.parse(history);
+            
+            historyContent.innerHTML = '';
+            if (historyArray.length === 0) {
+                historyContent.textContent = '暂无历史记录';
+                return;
+            }
+            
+            historyArray.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.textContent = `${index + 1}. ${item}`;
+                historyContent.appendChild(itemElement);
+            });
+        }
+        
+        // 保存训练记录
+        function saveWorkout() {
+            const workout = workoutInput.value.trim();
+            if (!workout) return;
+            
+            // 获取现有历史记录
+            const history = localStorage.getItem('workoutHistory') || '[]';
+            const historyArray = JSON.parse(history);
+            
+            // 添加新记录
+            historyArray.push(workout);
+            
+            // 保存到localStorage
+            localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
+            
+            // 清空输入框
+            workoutInput.value = '';
+            
+            // 如果历史记录面板是打开的，更新显示
+            if (historyContent.style.display === 'block') {
+                loadHistory();
+            }
+        }
+        
+        // 初始化应用
+        init();
+        
+        // 注册 Service Worker（支持离线访问）
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('Service Worker 注册成功:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.warn('Service Worker 注册失败:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

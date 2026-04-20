@@ -9,15 +9,15 @@ module.exports = async (req, res) => {
             { role: "user", content: userPrompt }
         ];
         
-        // 调用minimax API
-        const response = await fetch("https://api.minimax.chat/v1/text/chatcompletion", {
+        // 调用minimax API (使用OpenAI兼容格式)
+        const response = await fetch("https://api.minimax.io/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${process.env.MINIMAX_API_KEY}`
             },
             body: JSON.stringify({
-                model: "minimax-m2.7",
+                model: "MiniMax-M2.7",
                 messages: messages,
                 temperature: 1.0
             })
@@ -28,9 +28,14 @@ module.exports = async (req, res) => {
         }
         
         const data = await response.json();
-        // 处理MINIMAX API的响应格式
-        const aiResponse = data.choices ? data.choices[0].message.content : data.resp_data.choices[0].message.content;
-        res.json({ content: aiResponse });
+        // 处理OpenAI兼容格式的响应
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+            const aiResponse = data.choices[0].message.content;
+            res.json({ content: aiResponse });
+        } else {
+            console.error('API响应格式错误:', JSON.stringify(data));
+            throw new Error('API响应格式错误');
+        }
         
     } catch (error) {
         console.error('AI API错误:', error);

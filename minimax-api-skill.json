@@ -1,0 +1,114 @@
+{
+  "name": "minimax-api",
+  "description": "MINIMAX API integration for AI chat capabilities, supporting OpenAI compatible format",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "api_key": {
+        "type": "string",
+        "description": "MINIMAX API key"
+      },
+      "model": {
+        "type": "string",
+        "description": "Model name to use",
+        "default": "MiniMax-M2.7",
+        "enum": ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M2.5", "MiniMax-M2.5-highspeed", "MiniMax-M2.1", "MiniMax-M2.1-highspeed", "MiniMax-M2"]
+      },
+      "system_prompt": {
+        "type": "string",
+        "description": "System prompt for the AI"
+      },
+      "user_prompt": {
+        "type": "string",
+        "description": "User prompt for the AI"
+      },
+      "message_history": {
+        "type": "array",
+        "description": "Previous messages in the conversation",
+        "items": {
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string",
+              "enum": ["system", "user", "assistant"]
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": ["role", "content"]
+        }
+      },
+      "temperature": {
+        "type": "number",
+        "description": "Temperature parameter (0.0-1.0)",
+        "default": 1.0
+      },
+      "reasoning_split": {
+        "type": "boolean",
+        "description": "Whether to separate thinking content into reasoning_details field",
+        "default": false
+      }
+    },
+    "required": ["api_key", "user_prompt"]
+  },
+  "documentation": {
+    "api_endpoint": "https://api.minimax.io/v1/chat/completions",
+    "environment_variables": {
+      "OPENAI_BASE_URL": "https://api.minimax.io/v1",
+      "OPENAI_API_KEY": "${YOUR_API_KEY}"
+    },
+    "supported_models": [
+      {
+        "name": "MiniMax-M2.7",
+        "context_window": "204,800",
+        "description": "Beginning the journey of recursive self-improvement (output speed approximately 60 tps)"
+      },
+      {
+        "name": "MiniMax-M2.7-highspeed",
+        "context_window": "204,800",
+        "description": "M2.7 Highspeed: Same performance, faster and more agile (output speed approximately 100 tps)"
+      },
+      {
+        "name": "MiniMax-M2.5",
+        "context_window": "204,800",
+        "description": "Peak Performance. Ultimate Value. Master the Complex (output speed approximately 60 tps)"
+      },
+      {
+        "name": "MiniMax-M2.5-highspeed",
+        "context_window": "204,800",
+        "description": "M2.5 highspeed: Same performance, faster and more agile (output speed approximately 100 tps)"
+      },
+      {
+        "name": "MiniMax-M2.1",
+        "context_window": "204,800",
+        "description": "Powerful Multi-Language Programming Capabilities with Comprehensively Enhanced Programming Experience (output speed approximately 60 tps)"
+      },
+      {
+        "name": "MiniMax-M2.1-highspeed",
+        "context_window": "204,800",
+        "description": "Faster and More Agile (output speed approximately 100 tps)"
+      },
+      {
+        "name": "MiniMax-M2",
+        "context_window": "204,800",
+        "description": "Agentic capabilities, Advanced reasoning"
+      }
+    ],
+    "important_notes": [
+      "The temperature parameter range is (0.0, 1.0], recommended value: 1.0, values outside this range will return an error",
+      "Some OpenAI parameters (such as presence_penalty, frequency_penalty, logit_bias, etc.) will be ignored",
+      "Image and audio type inputs are not currently supported",
+      "The n parameter only supports value 1",
+      "The deprecated function_call is not supported, please use the tools parameter"
+    ],
+    "examples": {
+      "basic_call": {
+        "code": "from openai import OpenAI\n\nclient = OpenAI()\n\nresponse = client.chat.completions.create(\n    model=\"MiniMax-M2.7\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n        {\"role\": \"user\", \"content\": \"Hi, how are you?\"},\n    ],\n    extra_body={\"reasoning_split\": True},\n)\n\nprint(f\"Thinking:\n{response.choices[0].message.reasoning_details[0]['text']}\n\")\nprint(f\"Text:\n{response.choices[0].message.content}\n\")"
+      },
+      "streaming_response": {
+        "code": "from openai import OpenAI\n\nclient = OpenAI()\n\nprint(\"Starting stream response...\n\")\nprint(\"=\" * 60)\nprint(\"Thinking Process:\")\nprint(\"=\" * 60)\n\nstream = client.chat.completions.create(\n    model=\"MiniMax-M2.7\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n        {\"role\": \"user\", \"content\": \"Hi, how are you?\"},\n    ],\n    extra_body={\"reasoning_split\": True},\n    stream=True,\n)\n\nreasoning_buffer = \"\"\ntext_buffer = \"\"\n\nfor chunk in stream:\n    if (\n        hasattr(chunk.choices[0].delta, \"reasoning_details\")\n        and chunk.choices[0].delta.reasoning_details\n    ):\n        for detail in chunk.choices[0].delta.reasoning_details:\n            if \"text\" in detail:\n                reasoning_text = detail[\"text\"]\n                new_reasoning = reasoning_text[len(reasoning_buffer) :]\n                if new_reasoning:\n                    print(new_reasoning, end=\"\", flush=True)\n                    reasoning_buffer = reasoning_text\n\n    if chunk.choices[0].delta.content:\n        content_text = chunk.choices[0].delta.content\n        new_text = content_text[len(text_buffer) :] if text_buffer else content_text\n        if new_text:\n            print(new_text, end=\"\", flush=True)\n            text_buffer = content_text\n\nprint(\"\n\" + \"=\" * 60)\nprint(\"Response Content:\")\nprint(\"=\" * 60)\nprint(f\"{text_buffer}\n\")"
+      }
+    }
+  }
+}

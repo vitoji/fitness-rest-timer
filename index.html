@@ -426,7 +426,7 @@
                 }
                 
                 const data = await response.json();
-                const aiResponse = data.choices[0].message.content;
+                const aiResponse = data.content;
                 
                 // 添加AI消息
                 addAIMessage(aiResponse);

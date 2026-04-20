@@ -434,16 +434,29 @@
             isPaused = false;
             startBtn.textContent = '暂停';
             
+            console.log('开始倒计时，时长：', remainingTime, '秒');
+            
+            let counter = 0;
             countdown = setInterval(() => {
                 remainingTime--;
+                counter++;
                 updateTimerDisplay();
+                
+                if (counter % 5 === 0) {
+                    console.log('倒计时中，剩余：', remainingTime, '秒');
+                }
                 
                 if (remainingTime <= 0) {
                     console.log('倒计时结束，显示弹窗');
                     clearInterval(countdown);
                     stopTimer();
                     notifyUser();
-                    showEndModal();
+                    
+                    // 确保弹窗在移动端也能显示
+                    setTimeout(() => {
+                        showEndModal();
+                    }, 100);
+                    
                     generateAIMessage();
                 }
             }, 1000);
@@ -461,16 +474,29 @@
             isPaused = false;
             startBtn.textContent = '暂停';
             
+            console.log('继续倒计时，剩余：', remainingTime, '秒');
+            
+            let counter = 0;
             countdown = setInterval(() => {
                 remainingTime--;
+                counter++;
                 updateTimerDisplay();
+                
+                if (counter % 5 === 0) {
+                    console.log('倒计时中，剩余：', remainingTime, '秒');
+                }
                 
                 if (remainingTime <= 0) {
                     console.log('倒计时结束，显示弹窗');
                     clearInterval(countdown);
                     stopTimer();
                     notifyUser();
-                    showEndModal();
+                    
+                    // 确保弹窗在移动端也能显示
+                    setTimeout(() => {
+                        showEndModal();
+                    }, 100);
+                    
                     generateAIMessage();
                 }
             }, 1000);

@@ -203,49 +203,64 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.6);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: 99999;
+            padding: 20px;
         }
         
         .modal {
             background-color: white;
-            padding: 40px;
-            border-radius: 10px;
+            padding: 30px 25px;
+            border-radius: 15px;
             text-align: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            max-width: 400px;
-            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 350px;
+            animation: modalPop 0.3s ease-out;
+        }
+        
+        @keyframes modalPop {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
         
         .modal h2 {
             color: #4CAF50;
-            margin-bottom: 20px;
-            font-size: 28px;
+            margin-bottom: 15px;
+            font-size: 24px;
         }
         
         .modal p {
             color: #666;
-            margin-bottom: 30px;
-            font-size: 18px;
+            margin-bottom: 25px;
+            font-size: 16px;
+            line-height: 1.5;
         }
         
         .modal-btn {
-            padding: 12px 30px;
-            font-size: 18px;
+            padding: 12px 40px;
+            font-size: 17px;
             font-weight: bold;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 25px;
             cursor: pointer;
             transition: background-color 0.3s;
+            -webkit-tap-highlight-color: transparent;
         }
         
-        .modal-btn:hover {
-            background-color: #45a049;
+        .modal-btn:active {
+            background-color: #388E3C;
         }
         
         /* 加载状态样式 */
@@ -296,6 +311,9 @@
             <button class="control-btn start-btn" id="startBtn">开始</button>
             <button class="control-btn stop-btn" id="stopBtn">停止</button>
         </div>
+        <div style="margin-top: 10px;">
+            <button id="testModalBtn" style="padding: 8px 16px; font-size: 14px; background-color: #ff9800; color: white; border: none; border-radius: 5px; cursor: pointer;">测试弹窗</button>
+        </div>
         
         <div class="ai-section">
             <h3>AI互动</h3>
@@ -325,6 +343,7 @@
         const timerElement = document.getElementById('timer');
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
+        const testModalBtn = document.getElementById('testModalBtn');
         const durationBtns = document.querySelectorAll('.duration-btn');
         const aiMessages = document.getElementById('aiMessages');
         const aiInput = document.getElementById('aiInput');
@@ -347,6 +366,7 @@
             // 绑定控制按钮
             startBtn.addEventListener('click', toggleTimer);
             stopBtn.addEventListener('click', stopTimer);
+            testModalBtn.addEventListener('click', showEndModal);
             
             // 绑定AI输入
             aiSubmit.addEventListener('click', sendAIRequest);
@@ -462,6 +482,14 @@
         
         // 显示结束弹窗
         function showEndModal() {
+            console.log('显示结束弹窗');
+            
+            // 先检查是否已有弹窗
+            const existingModal = document.querySelector('.modal-overlay');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
             const modalOverlay = document.createElement('div');
             modalOverlay.className = 'modal-overlay';
             modalOverlay.innerHTML = `
@@ -473,11 +501,20 @@
             `;
             document.body.appendChild(modalOverlay);
             
-            document.getElementById('closeModalBtn').addEventListener('click', () => {
+            const closeBtn = modalOverlay.querySelector('#closeModalBtn');
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 modalOverlay.remove();
             });
             
             modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    modalOverlay.remove();
+                }
+            });
+            
+            // 也可以点击背景关闭
+            modalOverlay.addEventListener('touchstart', (e) => {
                 if (e.target === modalOverlay) {
                     modalOverlay.remove();
                 }

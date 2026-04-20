@@ -24,7 +24,14 @@ module.exports = async (req, res) => {
         });
         
         if (!response.ok) {
-            throw new Error(`API调用失败: ${response.status}`);
+            const errorText = await response.text();
+            console.error('API错误响应:', errorText);
+            if (response.status === 529) {
+                // 处理速率限制错误
+                res.status(429).json({ error: 'API调用频率过高，请稍后重试' });
+                return;
+            }
+            throw new Error(`API调用失败: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();

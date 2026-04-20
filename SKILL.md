@@ -1,8 +1,5 @@
 name: minimax-api
-version: 1.0.0
 description: MINIMAX API integration for AI chat capabilities, supporting OpenAI compatible format
-author: vitoji
-license: MIT
 
 parameters:
   api_key:

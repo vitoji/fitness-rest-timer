@@ -439,6 +439,8 @@
                 updateTimerDisplay();
                 
                 if (remainingTime <= 0) {
+                    console.log('倒计时结束，显示弹窗');
+                    clearInterval(countdown);
                     stopTimer();
                     notifyUser();
                     showEndModal();
@@ -464,6 +466,8 @@
                 updateTimerDisplay();
                 
                 if (remainingTime <= 0) {
+                    console.log('倒计时结束，显示弹窗');
+                    clearInterval(countdown);
                     stopTimer();
                     notifyUser();
                     showEndModal();
@@ -474,7 +478,10 @@
         
         // 停止计时器
         function stopTimer() {
-            clearInterval(countdown);
+            if (countdown) {
+                clearInterval(countdown);
+                countdown = null;
+            }
             isRunning = false;
             isPaused = false;
             startBtn.textContent = '开始';

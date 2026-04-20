@@ -311,9 +311,6 @@
             <button class="control-btn start-btn" id="startBtn">开始</button>
             <button class="control-btn stop-btn" id="stopBtn">停止</button>
         </div>
-        <div style="margin-top: 10px;">
-            <button id="testModalBtn" style="padding: 8px 16px; font-size: 14px; background-color: #ff9800; color: white; border: none; border-radius: 5px; cursor: pointer;">测试弹窗</button>
-        </div>
         
         <div class="ai-section">
             <h3>AI互动</h3>
@@ -343,7 +340,6 @@
         const timerElement = document.getElementById('timer');
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
-        const testModalBtn = document.getElementById('testModalBtn');
         const durationBtns = document.querySelectorAll('.duration-btn');
         const aiMessages = document.getElementById('aiMessages');
         const aiInput = document.getElementById('aiInput');
@@ -366,7 +362,6 @@
             // 绑定控制按钮
             startBtn.addEventListener('click', toggleTimer);
             stopBtn.addEventListener('click', stopTimer);
-            testModalBtn.addEventListener('click', showEndModal);
             
             // 绑定AI输入
             aiSubmit.addEventListener('click', sendAIRequest);

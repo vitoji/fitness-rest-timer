@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
         ];
         
         // 调用minimax API
-        const response = await fetch("https://api.minimax.chat/v1/chat/completions", {
+        const response = await fetch("https://api.minimax.chat/v1/text/chatcompletion", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -28,7 +28,9 @@ module.exports = async (req, res) => {
         }
         
         const data = await response.json();
-        res.json({ content: data.choices[0].message.content });
+        // 处理MINIMAX API的响应格式
+        const aiResponse = data.choices ? data.choices[0].message.content : data.resp_data.choices[0].message.content;
+        res.json({ content: aiResponse });
         
     } catch (error) {
         console.error('AI API错误:', error);

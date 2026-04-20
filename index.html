@@ -426,7 +426,8 @@
                 }
                 
                 const data = await response.json();
-                const aiResponse = data.content;
+                // 检查MINIMAX API的响应格式
+                const aiResponse = data.choices ? data.choices[0].message.content : data.resp_data.choices[0].message.content;
                 
                 // 添加AI消息
                 addAIMessage(aiResponse);

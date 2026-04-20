@@ -195,6 +195,87 @@
             50% { opacity: 0.3; }
             100% { opacity: 1; }
         }
+        
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .modal h2 {
+            color: #4CAF50;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        
+        .modal p {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+        
+        .modal-btn {
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .modal-btn:hover {
+            background-color: #45a049;
+        }
+        
+        /* 加载状态样式 */
+        .loading-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ddd;
+            border-top-color: #2196F3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #666;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -237,6 +318,8 @@
         let countdown; // 倒计时定时器
         let remainingTime = 0; // 剩余时间（秒）
         let isRunning = false; // 是否正在运行
+        let isPaused = false; // 是否暂停
+        let loadingElement = null; // 加载状态元素
         
         // DOM元素
         const timerElement = document.getElementById('timer');
@@ -262,7 +345,7 @@
             });
             
             // 绑定控制按钮
-            startBtn.addEventListener('click', startTimer);
+            startBtn.addEventListener('click', toggleTimer);
             stopBtn.addEventListener('click', stopTimer);
             
             // 绑定AI输入
@@ -293,8 +376,10 @@
         
         // 设置时长
         function setDuration(seconds) {
-            remainingTime = seconds;
-            updateTimerDisplay();
+            if (!isRunning) {
+                remainingTime = seconds;
+                updateTimerDisplay();
+            }
         }
         
         // 更新计时器显示
@@ -304,11 +389,29 @@
             timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
         
+        // 切换计时器（开始/暂停）
+        function toggleTimer() {
+            if (isRunning && !isPaused) {
+                // 暂停
+                pauseTimer();
+            } else if (isPaused) {
+                // 继续
+                resumeTimer();
+            } else {
+                // 开始
+                startTimer();
+            }
+        }
+        
         // 开始计时器
         function startTimer() {
-            if (isRunning) return;
+            if (remainingTime <= 0) {
+                alert('请先选择倒计时时长');
+                return;
+            }
             
             isRunning = true;
+            isPaused = false;
             startBtn.textContent = '暂停';
             
             countdown = setInterval(() => {
@@ -318,6 +421,32 @@
                 if (remainingTime <= 0) {
                     stopTimer();
                     notifyUser();
+                    showEndModal();
+                    generateAIMessage();
+                }
+            }, 1000);
+        }
+        
+        // 暂停计时器
+        function pauseTimer() {
+            clearInterval(countdown);
+            isPaused = true;
+            startBtn.textContent = '继续';
+        }
+        
+        // 继续计时器
+        function resumeTimer() {
+            isPaused = false;
+            startBtn.textContent = '暂停';
+            
+            countdown = setInterval(() => {
+                remainingTime--;
+                updateTimerDisplay();
+                
+                if (remainingTime <= 0) {
+                    stopTimer();
+                    notifyUser();
+                    showEndModal();
                     generateAIMessage();
                 }
             }, 1000);
@@ -327,7 +456,32 @@
         function stopTimer() {
             clearInterval(countdown);
             isRunning = false;
+            isPaused = false;
             startBtn.textContent = '开始';
+        }
+        
+        // 显示结束弹窗
+        function showEndModal() {
+            const modalOverlay = document.createElement('div');
+            modalOverlay.className = 'modal-overlay';
+            modalOverlay.innerHTML = `
+                <div class="modal">
+                    <h2>💪 休息时间到！</h2>
+                    <p>该开始下一组训练了，加油！</p>
+                    <button class="modal-btn" id="closeModalBtn">知道了</button>
+                </div>
+            `;
+            document.body.appendChild(modalOverlay);
+            
+            document.getElementById('closeModalBtn').addEventListener('click', () => {
+                modalOverlay.remove();
+            });
+            
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    modalOverlay.remove();
+                }
+            });
         }
         
         // 请求通知权限
@@ -430,9 +584,32 @@
             callMinimaxAPI(systemPrompt, message);
         }
         
+        // 显示加载状态
+        function showLoadingIndicator() {
+            loadingElement = document.createElement('div');
+            loadingElement.className = 'loading-indicator';
+            loadingElement.innerHTML = `
+                <div class="loading-spinner"></div>
+                <div class="loading-text">正在思考中...</div>
+            `;
+            aiMessages.appendChild(loadingElement);
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+        }
+        
+        // 隐藏加载状态
+        function hideLoadingIndicator() {
+            if (loadingElement) {
+                loadingElement.remove();
+                loadingElement = null;
+            }
+        }
+        
         // 调用后端API代理
         async function callMinimaxAPI(systemPrompt, userPrompt) {
             try {
+                // 显示加载状态
+                showLoadingIndicator();
+                
                 // 构建消息历史
                 const messages = [
                     { role: "system", content: systemPrompt },
@@ -469,6 +646,9 @@
                 }
                 const aiResponse = data.content;
                 
+                // 隐藏加载状态
+                hideLoadingIndicator();
+                
                 // 添加AI消息
                 addAIMessage(aiResponse);
                 
@@ -482,6 +662,8 @@
                 }
             } catch (error) {
                 console.error("AI调用错误:", error);
+                // 隐藏加载状态
+                hideLoadingIndicator();
                 // 出错时显示错误信息
                 addAIMessage(`模型服务有问题: ${error.message}`);
             }

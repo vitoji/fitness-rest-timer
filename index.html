@@ -188,6 +188,13 @@
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+        
+        /* 闪烁动画 */
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -332,9 +339,19 @@
         
         // 通知用户
         function notifyUser() {
+            // 视觉提醒 - 计时器闪烁效果
+            timerElement.style.animation = 'none';
+            setTimeout(() => {
+                timerElement.style.animation = 'blink 1s ease-in-out 3';
+            }, 10);
+            
             // 使用 Web Audio API 生成提示音（不依赖外部文件）
             try {
+                // 检查音频上下文是否被暂停
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
                 const playBeep = (freq, startTime, duration) => {
                     const oscillator = audioCtx.createOscillator();
                     const gainNode = audioCtx.createGain();
@@ -361,14 +378,29 @@
             }
             
             // 通知提醒（如果支持）
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('💪 休息时间到！', {
-                    body: '该开始下一组训练了，加油！',
-                    icon: 'icon-192.png',
-                    badge: 'icon-192.png',
-                    vibrate: [200, 100, 200, 100, 400],
-                    tag: 'rest-timer'
-                });
+            if ('Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification('💪 休息时间到！', {
+                        body: '该开始下一组训练了，加油！',
+                        icon: 'icon-192.png',
+                        badge: 'icon-192.png',
+                        vibrate: [200, 100, 200, 100, 400],
+                        tag: 'rest-timer'
+                    });
+                } else if (Notification.permission !== 'denied') {
+                    // 如果用户还没有选择，再次请求权限
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            new Notification('💪 休息时间到！', {
+                                body: '该开始下一组训练了，加油！',
+                                icon: 'icon-192.png',
+                                badge: 'icon-192.png',
+                                vibrate: [200, 100, 200, 100, 400],
+                                tag: 'rest-timer'
+                            });
+                        }
+                    });
+                }
             }
         }
         

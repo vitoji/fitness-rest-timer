@@ -77,8 +77,8 @@ module.exports = async (req, res) => {
     } catch (error) {
         console.error('AI API错误:', error);
         // 检查是否是认证错误
-        if (error.message.includes('401') || error.message.includes('认证')) {
-            res.status(401).json({ error: 'API密钥配置错误，请检查Vercel上的MINIMAX_API_KEY环境变量' });
+        if (error.message.includes('401') || error.message.includes('认证') || error.message.includes('invalid api key')) {
+            res.status(401).json({ error: 'API密钥无效或配置错误，请检查Vercel上的MINIMAX_API_KEY环境变量' });
         } else {
             res.status(500).json({ error: 'AI服务暂时不可用，请稍后重试' });
         }

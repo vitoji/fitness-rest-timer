@@ -66,19 +66,7 @@ async function processWorkoutRecord(userInput) {
     // 这里可以集成火山引擎的doubao语音大模型
     // 目前使用minimax模型作为替代
     
-    const systemPrompt = "你是一个健身训练记录助手，专门从用户的自然语言输入中提取训练记录信息。请从用户的输入中提取以下信息：
-1. 动作名称
-2. 重量（如果有）
-3. 组数（如果有）
-4. 次数（如果有）
-
-请以结构化的格式返回，例如：
-动作：深蹲
-重量：50公斤
-组数：3
-次数：10
-
-如果某些信息不存在，请留空。";
+    const systemPrompt = "你是一个健身训练记录助手，专门从用户的自然语言输入中提取训练记录信息。请从用户的输入中提取以下信息：\n1. 动作名称\n2. 重量（如果有）\n3. 组数（如果有）\n4. 次数（如果有）\n\n请以结构化的格式返回，例如：\n动作：深蹲\n重量：50公斤\n组数：3\n次数：10\n\n如果某些信息不存在，请留空。";
     
     const response = await fetch("https://api.minimax.io/v1/chat/completions", {
         method: "POST",

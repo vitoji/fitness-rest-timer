@@ -315,21 +315,19 @@
         <div class="ai-section">
             <h3>AI健身助手</h3>
             <div id="aiMessages"></div>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
                 <input type="text" class="ai-input" id="aiInput" placeholder="输入健身相关问题或训练记录..." style="flex: 1;">
-                <button class="ai-submit" id="aiSubmit">发送</button>
-                <button class="ai-submit" id="voiceInputBtn" title="语音输入"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line><line x1="8" y1="22" x2="16" y2="22"></line></svg></button>
+                <button class="ai-submit" id="aiSubmit" style="padding: 12px 30px; font-size: 16px; font-weight: bold;">发送</button>
+                <button class="ai-submit" id="voiceInputBtn" title="语音输入" style="padding: 12px; min-width: 50px;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line><line x1="8" y1="22" x2="16" y2="22"></line></svg></button>
+                <button class="ai-submit" id="voiceOutputBtn" title="语音朗读" style="padding: 12px; min-width: 50px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                </button>
             </div>
-            <button class="ai-submit" id="voiceOutputBtn" title="语音朗读" style="margin-top: 10px; width: 100%;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg> 语音朗读
-            </button>
         </div>
         
         <div class="history-section">
             <h3>训练记录</h3>
-            <input type="text" class="ai-input" id="workoutInput" placeholder="输入训练内容，如：卧推 40kg×10">
-            <button class="ai-submit" id="saveWorkoutBtn">保存记录</button>
-            <button class="history-btn" id="historyBtn">查看历史</button>
+            <button class="history-btn" id="historyBtn" style="padding: 12px 30px; font-size: 16px; font-weight: bold; margin-bottom: 15px;">查看历史</button>
             <div class="history-content" id="historyContent" style="display: none;"></div>
         </div>
     </div>
@@ -745,6 +743,23 @@
             }
         }
         
+        // 检测是否是训练记录
+        function isWorkoutRecord(text) {
+            // 训练记录的常见模式
+            const workoutPatterns = [
+                /^\s*(\S+)\s*(\d+)\s*(kg|g|lb|磅|公斤)?\s*[×x]\s*(\d+)\s*$/i, // 如：卧推 40kg×10
+                /^\s*(\S+)\s*(\d+)\s*(组|组次)\s*(\d+)\s*(次|个)\s*$/i, // 如：深蹲 3组10次
+                /^\s*(\S+)\s*:\s*(\d+)\s*(kg|g|lb|磅|公斤)?\s*\s*(\d+)\s*(次|个)\s*$/i, // 如：硬拉: 100kg 8次
+            ];
+            
+            return workoutPatterns.some(pattern => pattern.test(text));
+        }
+        
+        // 提取训练记录
+        function extractWorkoutRecord(text) {
+            return text.trim();
+        }
+        
         // 调用后端API代理
         async function callMinimaxAPI(systemPrompt, userPrompt) {
             try {
@@ -787,23 +802,32 @@
                 }
                 const aiResponse = data.content;
                 
-                // 如果是训练记录，保存到本地存储
-                if (data.isWorkoutRecord && data.extractedWorkout) {
+                // 检测是否是训练记录并保存
+                if (isWorkoutRecord(userPrompt)) {
+                    const workoutRecord = extractWorkoutRecord(userPrompt);
                     const history = localStorage.getItem('workoutHistory') || '[]';
                     const historyArray = JSON.parse(history);
-                    historyArray.push(data.extractedWorkout);
+                    historyArray.push(workoutRecord);
                     localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
                     // 如果历史记录面板是打开的，更新显示
                     if (historyContent.style.display !== 'none') {
                         loadHistory();
                     }
+                    // 在AI回复中添加确认信息
+                    const confirmedResponse = aiResponse + ' 📝 训练记录已保存';
+                    addAIMessage(confirmedResponse);
+                } else {
+                    // 隐藏加载状态
+                    hideLoadingIndicator();
+                    
+                    // 添加AI消息
+                    addAIMessage(aiResponse);
                 }
                 
-                // 隐藏加载状态
-                hideLoadingIndicator();
-                
-                // 添加AI消息
-                addAIMessage(aiResponse);
+                // 隐藏加载状态（如果还没隐藏）
+                if (loadingElement) {
+                    hideLoadingIndicator();
+                }
                 
                 // 更新消息历史
                 aiMessageHistory.push({ role: "user", content: userPrompt });

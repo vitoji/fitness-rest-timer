@@ -56,6 +56,11 @@ app.post('/api/chat', async (req, res) => {
                     res.status(429).json({ error: 'API调用频率过高，请稍后重试' });
                     return;
                 }
+                if (response.status === 401) {
+                    // 处理认证错误，返回友好的错误信息
+                    res.status(401).json({ error: 'API密钥配置错误，请检查配置' });
+                    return;
+                }
                 throw new Error(`API调用失败: ${response.status} - ${errorText}`);
             }
             
@@ -102,6 +107,11 @@ async function detectAndProcess(userInput) {
     if (!response.ok) {
         const errorText = await response.text();
         console.error('训练记录API错误响应:', errorText);
+        // 如果是认证错误，返回一个默认的非训练记录响应
+        if (response.status === 401) {
+            console.warn('API认证失败，返回默认响应');
+            return { isWorkout: false, data: null };
+        }
         throw new Error(`训练记录API调用失败: ${response.status} - ${errorText}`);
     }
     

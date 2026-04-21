@@ -481,7 +481,10 @@
             });
             
             // 绑定语音输入按钮
-            voiceInputBtn.addEventListener('click', function() {
+            voiceInputBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('语音输入按钮被点击');
                 startSpeechRecognition();
             });
             
@@ -796,6 +799,8 @@
                 /^\s*(\S+)\s*(\d+)\s*(kg|g|lb|磅|公斤)?\s*[×x]\s*(\d+)\s*$/i, // 如：卧推 40kg×10
                 /^\s*(\S+)\s*(\d+)\s*(组|组次)\s*(\d+)\s*(次|个)\s*$/i, // 如：深蹲 3组10次
                 /^\s*(\S+)\s*:\s*(\d+)\s*(kg|g|lb|磅|公斤)?\s*\s*(\d+)\s*(次|个)\s*$/i, // 如：硬拉: 100kg 8次
+                /^\s*我刚才做了\s*(\d+)\s*组\s*(\S+)\s*，?\s*每(组|次)?\s*(重量是)?\s*(\d+)\s*(公斤|kg|磅|lb)?\s*$/i, // 如：我刚才做了10组深蹲，每组重量是10公斤
+                /^\s*做了\s*(\d+)\s*组\s*(\S+)\s*，?\s*每(组|次)?\s*(重量是)?\s*(\d+)\s*(公斤|kg|磅|lb)?\s*$/i, // 如：做了10组深蹲，每组重量是10公斤
             ];
             
             return workoutPatterns.some(pattern => pattern.test(text));

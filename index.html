@@ -313,10 +313,10 @@
         </div>
         
         <div class="ai-section">
-            <h3>AI互动</h3>
+            <h3>AI健身助手</h3>
             <div id="aiMessages"></div>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="text" class="ai-input" id="aiInput" placeholder="输入健身相关问题..." style="flex: 1;">
+                <input type="text" class="ai-input" id="aiInput" placeholder="输入健身相关问题或训练记录..." style="flex: 1;">
                 <button class="ai-submit" id="aiSubmit">发送</button>
                 <button class="ai-submit" id="voiceInputBtn" title="语音输入"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line><line x1="8" y1="22" x2="16" y2="22"></line></svg></button>
             </div>
@@ -326,12 +326,7 @@
         </div>
         
         <div class="history-section">
-            <h3>训练记录</h3>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="text" class="ai-input" id="workoutInput" placeholder="输入训练内容，如：卧推 40kg×10" style="flex: 1;">
-                <button class="ai-submit" id="saveWorkoutBtn">保存记录</button>
-                <button class="ai-submit" id="workoutVoiceBtn" title="语音输入"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line><line x1="8" y1="22" x2="16" y2="22"></line></svg></button>
-            </div>
+            <h3>训练记录历史</h3>
             <button class="history-btn" id="historyBtn">查看历史</button>
             <div class="history-content" id="historyContent" style="display: none;"></div>
         </div>
@@ -357,9 +352,6 @@
         const aiSubmit = document.getElementById('aiSubmit');
         const voiceInputBtn = document.getElementById('voiceInputBtn');
         const voiceOutputBtn = document.getElementById('voiceOutputBtn');
-        const workoutInput = document.getElementById('workoutInput');
-        const saveWorkoutBtn = document.getElementById('saveWorkoutBtn');
-        const workoutVoiceBtn = document.getElementById('workoutVoiceBtn');
         const historyBtn = document.getElementById('historyBtn');
         const historyContent = document.getElementById('historyContent');
         
@@ -373,55 +365,33 @@
                 
                 recognition.onstart = function() {
                     isListening = true;
-                    updateVoiceButtonState(true);
+                    voiceInputBtn.style.backgroundColor = '#f44336';
                 };
                 
                 recognition.onresult = function(event) {
                     const transcript = event.results[0][0].transcript;
                     console.log('语音识别结果:', transcript);
-                    
-                    // 检查当前焦点，决定是发送AI消息还是保存训练记录
-                    if (document.activeElement === aiInput || aiInput === lastFocusedElement) {
-                        aiInput.value = transcript;
-                        sendAIRequest();
-                    } else if (document.activeElement === workoutInput || workoutInput === lastFocusedElement) {
-                        workoutInput.value = transcript;
-                        // 自动保存训练记录
-                        saveWorkout();
-                    }
+                    aiInput.value = transcript;
+                    sendAIRequest();
                 };
                 
                 recognition.onerror = function(event) {
                     console.error('语音识别错误:', event.error);
-                    updateVoiceButtonState(false);
+                    voiceInputBtn.style.backgroundColor = '#4CAF50';
                 };
                 
                 recognition.onend = function() {
                     isListening = false;
-                    updateVoiceButtonState(false);
+                    voiceInputBtn.style.backgroundColor = '#4CAF50';
                 };
             } else {
                 console.warn('浏览器不支持语音识别');
-                // 禁用语音按钮
                 voiceInputBtn.disabled = true;
-                workoutVoiceBtn.disabled = true;
-            }
-        }
-        
-        // 更新语音按钮状态
-        function updateVoiceButtonState(isActive) {
-            if (isActive) {
-                voiceInputBtn.style.backgroundColor = '#f44336';
-                workoutVoiceBtn.style.backgroundColor = '#f44336';
-            } else {
-                voiceInputBtn.style.backgroundColor = '#4CAF50';
-                workoutVoiceBtn.style.backgroundColor = '#4CAF50';
             }
         }
         
         // 开始语音识别
-        function startSpeechRecognition(targetInput) {
-            lastFocusedElement = targetInput;
+        function startSpeechRecognition() {
             if (recognition && !isListening) {
                 try {
                     recognition.start();
@@ -444,9 +414,6 @@
                 console.warn('浏览器不支持语音合成');
             }
         }
-        
-        // 全局变量：记录最后聚焦的元素
-        let lastFocusedElement = null;
         
         // 初始化
         function init() {
@@ -475,7 +442,7 @@
             
             // 绑定语音输入按钮
             voiceInputBtn.addEventListener('click', function() {
-                startSpeechRecognition(aiInput);
+                startSpeechRecognition();
             });
             
             // 绑定语音朗读按钮
@@ -488,19 +455,6 @@
             
             // 绑定历史记录按钮
             historyBtn.addEventListener('click', toggleHistory);
-            
-            // 绑定保存训练记录按钮
-            saveWorkoutBtn.addEventListener('click', saveWorkout);
-            workoutInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    saveWorkout();
-                }
-            });
-            
-            // 绑定训练记录语音输入按钮
-            workoutVoiceBtn.addEventListener('click', function() {
-                startSpeechRecognition(workoutInput);
-            });
             
             // 初始化历史记录
             loadHistory();
@@ -831,6 +785,18 @@
                 }
                 const aiResponse = data.content;
                 
+                // 如果是训练记录，保存到本地存储
+                if (data.isWorkoutRecord && data.extractedWorkout) {
+                    const history = localStorage.getItem('workoutHistory') || '[]';
+                    const historyArray = JSON.parse(history);
+                    historyArray.push(data.extractedWorkout);
+                    localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
+                    // 如果历史记录面板是打开的，更新显示
+                    if (historyContent.style.display !== 'none') {
+                        loadHistory();
+                    }
+                }
+                
                 // 隐藏加载状态
                 hideLoadingIndicator();
                 
@@ -906,66 +872,7 @@
             });
         }
         
-        // 保存训练记录
-        async function saveWorkout() {
-            const workout = workoutInput.value.trim();
-            if (!workout) return;
-            
-            try {
-                // 调用API处理训练记录
-                const systemPrompt = "你是一个健身训练记录助手，专门从用户的自然语言输入中提取训练记录信息。";
-                const response = await fetch("/api/chat", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        systemPrompt: systemPrompt,
-                        userPrompt: workout,
-                        type: 'workout'
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`API调用失败: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                const processedWorkout = data.content;
-                
-                // 获取现有历史记录
-                const history = localStorage.getItem('workoutHistory') || '[]';
-                const historyArray = JSON.parse(history);
-                
-                // 添加新记录
-                historyArray.push(processedWorkout);
-                
-                // 保存到localStorage
-                localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
-                
-                // 清空输入框
-                workoutInput.value = '';
-                
-                // 如果历史记录面板是打开的，更新显示
-                if (historyContent.style.display === 'block') {
-                    loadHistory();
-                }
-                
-                // 语音提示保存成功
-                speakText('训练记录已保存');
-            } catch (error) {
-                console.error('保存训练记录失败:', error);
-                // 如果API调用失败，直接保存原始输入
-                const history = localStorage.getItem('workoutHistory') || '[]';
-                const historyArray = JSON.parse(history);
-                historyArray.push(workout);
-                localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
-                workoutInput.value = '';
-                if (historyContent.style.display === 'block') {
-                    loadHistory();
-                }
-            }
-        }
+
         
         // 初始化应用
         init();

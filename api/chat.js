@@ -1,6 +1,6 @@
 module.exports = async (req, res) => {
     try {
-        const { systemPrompt, userPrompt, messageHistory, type = 'chat' } = req.body;
+        const { systemPrompt, userPrompt, messageHistory } = req.body;
         
         // 构建消息数组
         const messages = [
@@ -10,23 +10,27 @@ module.exports = async (req, res) => {
         ];
         
         let aiResponse;
+        let isWorkoutRecord = false;
+        let extractedWorkout = null;
         
-        // 根据类型选择不同的处理逻辑
-        if (type === 'workout') {
-            // 训练记录处理
-            // 使用火山引擎doubao模型进行训练记录抽取
-            aiResponse = await processWorkoutRecord(userPrompt);
+        // 首先检测用户输入是否是训练记录
+        const detectionResult = await detectAndProcess(userPrompt);
+        
+        if (detectionResult.isWorkout) {
+            isWorkoutRecord = true;
+            extractedWorkout = detectionResult.data;
+            aiResponse = `已为您保存训练记录：\n${extractedWorkout}\n\n继续加油！`;
         } else {
             // 普通聊天处理
             // 调用minimax API (使用OpenAI兼容格式)
-            const response = await fetch("https://api.minimax.io/v1/chat/completions", {
+            const response = await fetch("https://api.minimax.chat/v1/chat/completions", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${process.env.MINIMAX_API_KEY}`
                 },
                 body: JSON.stringify({
-                    model: "MiniMax-M2.7",
+                    model: "minimax-m2.7",
                     messages: messages,
                     temperature: 1.0
                 })
@@ -53,7 +57,11 @@ module.exports = async (req, res) => {
             }
         }
         
-        res.json({ content: aiResponse });
+        res.json({ 
+            content: aiResponse,
+            isWorkoutRecord: isWorkoutRecord,
+            extractedWorkout: extractedWorkout
+        });
         
     } catch (error) {
         console.error('AI API错误:', error);
@@ -61,21 +69,18 @@ module.exports = async (req, res) => {
     }
 };
 
-// 处理训练记录
-async function processWorkoutRecord(userInput) {
-    // 这里可以集成火山引擎的doubao语音大模型
-    // 目前使用minimax模型作为替代
+// 检测并处理用户输入
+async function detectAndProcess(userInput) {
+    const systemPrompt = "你是一个智能助手，请分析用户的输入是否是健身训练记录。\n\n如果是训练记录，请提取结构化信息并按以下格式返回JSON：\n{\n  \"isWorkout\": true,\n  \"data\": \"动作：[动作名称]\\n重量：[重量]\\n组数：[组数]\\n次数：[次数]\"\n}\n\n如果不是训练记录，返回：\n{\n  \"isWorkout\": false,\n  \"data\": null\n}\n\n注意：只返回JSON，不要添加其他内容。";
     
-    const systemPrompt = "你是一个健身训练记录助手，专门从用户的自然语言输入中提取训练记录信息。请从用户的输入中提取以下信息：\n1. 动作名称\n2. 重量（如果有）\n3. 组数（如果有）\n4. 次数（如果有）\n\n请以结构化的格式返回，例如：\n动作：深蹲\n重量：50公斤\n组数：3\n次数：10\n\n如果某些信息不存在，请留空。";
-    
-    const response = await fetch("https://api.minimax.io/v1/chat/completions", {
+    const response = await fetch("https://api.minimax.chat/v1/chat/completions", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${process.env.MINIMAX_API_KEY}`
         },
         body: JSON.stringify({
-            model: "MiniMax-M2.7",
+            model: "minimax-m2.7",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userInput }
@@ -89,5 +94,12 @@ async function processWorkoutRecord(userInput) {
     }
     
     const data = await response.json();
-    return data.choices[0].message.content;
+    const content = data.choices[0].message.content;
+    
+    try {
+        return JSON.parse(content);
+    } catch (e) {
+        console.error('解析JSON失败:', content);
+        return { isWorkout: false, data: null };
+    }
 }

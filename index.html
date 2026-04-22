@@ -586,8 +586,27 @@
                     currentUtterance = new SpeechSynthesisUtterance(text);
                     currentUtterance.lang = 'zh-CN';
                     currentUtterance.rate = 1.0;
-                    currentUtterance.pitch = 1.0;
+                    currentUtterance.pitch = 1.1; // 稍微提高音调，使声音更甜美
                     currentUtterance.volume = 1.0;
+                    
+                    // 尝试选择甜美的音色
+                    const voices = speechSynthesis.getVoices();
+                    // 优先选择中文女声
+                    const chineseFemaleVoices = voices.filter(voice => 
+                        voice.lang.includes('zh') && voice.name.includes('女') || 
+                        voice.lang.includes('zh') && voice.gender === 'female' ||
+                        voice.lang.includes('zh-CN')
+                    );
+                    
+                    if (chineseFemaleVoices.length > 0) {
+                        // 选择第一个中文女声
+                        currentUtterance.voice = chineseFemaleVoices[0];
+                        console.log('使用语音:', chineseFemaleVoices[0].name);
+                    } else if (voices.length > 0) {
+                        //  fallback到第一个可用语音
+                        currentUtterance.voice = voices[0];
+                        console.log('使用默认语音:', voices[0].name);
+                    }
                     
                     currentUtterance.onstart = function() {
                         isSpeaking = true;
@@ -616,6 +635,18 @@
                 }
             } else {
                 console.warn('浏览器不支持语音合成');
+            }
+        }
+        
+        // 初始化语音合成 voices
+        function initSpeechSynthesis() {
+            if ('speechSynthesis' in window) {
+                // 预加载语音列表
+                speechSynthesis.getVoices();
+                // 监听voiceschanged事件
+                window.speechSynthesis.onvoiceschanged = function() {
+                    console.log('语音列表加载完成:', speechSynthesis.getVoices().length, '个语音可用');
+                };
             }
         }
         
@@ -669,8 +700,9 @@
             registerBtn.addEventListener('click', handleRegister);
             logoutBtn.addEventListener('click', handleLogout);
             
-            // 初始化语音识别
+            // 初始化语音识别和语音合成
             initSpeechRecognition();
+            initSpeechSynthesis();
             
             // 绑定时长选择按钮
             durationBtns.forEach(btn => {

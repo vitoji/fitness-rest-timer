@@ -2,8 +2,27 @@ module.exports = async (req, res) => {
     try {
         const { userPrompt, messageHistory } = req.body;
         
+        // 构建带历史的消息列表
+        const buildMessagesWithHistory = (userMsg, history) => {
+            const messages = [];
+            if (history && history.length > 0) {
+                for (const msg of history) {
+                    const role = msg.role === 'user' ? 'user' : 'assistant';
+                    messages.push({
+                        role: role,
+                        content: msg.content
+                    });
+                }
+            }
+            messages.push({
+                role: "user",
+                content: userMsg
+            });
+            return messages;
+        };
+        
         // 步骤1：意图识别 - 判断用户输入是闲聊还是训练记录
-        const intentSystemPrompt = "你是一个意图识别助手，专门判断用户输入是否包含训练记录。请只返回'训练记录'或'闲聊'，不要返回其他任何内容。";
+        const intentSystemPrompt = "你是一个意图识别助手，专门判断用户输入是否包含训练记录。请只返回'训练记录'或'闲聊'，不要返回其他任何内容。注意要结合对话历史上下文来判断。";
         
         const intentResponse = await fetch("https://api.minimax.io/anthropic/v1/messages", {
             method: "POST",
@@ -14,9 +33,7 @@ module.exports = async (req, res) => {
             body: JSON.stringify({
                 model: "MiniMax-M2.7",
                 system: intentSystemPrompt,
-                messages: [
-                    { role: "user", content: userPrompt }
-                ],
+                messages: buildMessagesWithHistory(userPrompt, messageHistory),
                 max_tokens: 100,
                 temperature: 0.1
             })
@@ -41,7 +58,7 @@ module.exports = async (req, res) => {
         
         if (intent === '训练记录') {
             // 步骤2：如果是训练记录，提取结构化数据
-            const extractSystemPrompt = "你是一个训练记录提取助手，请从用户输入中提取训练记录的结构化信息。返回格式为JSON，包含以下字段：\n{\n  \"exercise\": \"动作名称\",\n  \"sets\": 组数,\n  \"reps\": 次数,\n  \"weight\": \"重量\",\n  \"unit\": \"单位（如kg、磅等）\"\n}\n只返回JSON，不要返回其他任何内容。";
+            const extractSystemPrompt = "你是一个训练记录提取助手，请从用户输入和对话历史中提取训练记录的结构化信息。注意要结合上下文，从多轮对话中提取完整的训练信息。返回格式为JSON，包含以下字段：\n{\n  \"exercise\": \"动作名称\",\n  \"sets\": 组数,\n  \"reps\": 次数,\n  \"weight\": \"重量\",\n  \"unit\": \"单位（如kg、磅等）\"\n}\n只返回JSON，不要返回其他任何内容。";
             
             const extractResponse = await fetch("https://api.minimax.io/anthropic/v1/messages", {
                 method: "POST",
@@ -52,9 +69,7 @@ module.exports = async (req, res) => {
                 body: JSON.stringify({
                     model: "MiniMax-M2.7",
                     system: extractSystemPrompt,
-                    messages: [
-                        { role: "user", content: userPrompt }
-                    ],
+                    messages: buildMessagesWithHistory(userPrompt, messageHistory),
                     max_tokens: 500,
                     temperature: 0.1
                 })
@@ -93,7 +108,7 @@ module.exports = async (req, res) => {
             const workoutRecord = `${workoutData.exercise} ${workoutData.sets}组×${workoutData.reps}次 ${workoutData.weight}${workoutData.unit}`;
             
             // 步骤3：生成训练记录确认回复
-            const confirmSystemPrompt = "你是一个健身助手，当用户记录训练时，给出简短的鼓励和确认。回复要积极、专业，控制在2-3句话。";
+            const confirmSystemPrompt = "你是一个健身助手，当用户记录训练时，给出简短的鼓励和确认。回复要积极、专业，控制在2-3句话。注意要结合对话历史上下文，了解用户的训练情况。";
             
             const confirmResponse = await fetch("https://api.minimax.io/anthropic/v1/messages", {
                 method: "POST",
@@ -104,9 +119,7 @@ module.exports = async (req, res) => {
                 body: JSON.stringify({
                     model: "MiniMax-M2.7",
                     system: confirmSystemPrompt,
-                    messages: [
-                        { role: "user", content: userPrompt }
-                    ],
+                    messages: buildMessagesWithHistory(userPrompt, messageHistory),
                     max_tokens: 300,
                     temperature: 0.7
                 })

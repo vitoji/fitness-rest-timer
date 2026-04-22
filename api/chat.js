@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
         };
         
         // 步骤1：意图识别 - 判断用户输入是闲聊还是训练记录
-        const intentSystemPrompt = "你是一个意图识别助手，专门判断用户输入是否包含训练记录。请只返回'训练记录'或'闲聊'，不要返回其他任何内容。注意要结合对话历史上下文来判断。";
+        const intentSystemPrompt = "你是一个意图识别助手，专门判断用户输入是否包含训练记录。训练记录包括：1. 明确的训练动作（如深蹲、卧推、哑铃划船等）2. 训练组数、次数、重量等信息 3. 与训练相关的描述（如'做了'、'完成了'、'练了'等） 请只返回'训练记录'或'闲聊'，不要返回其他任何内容。注意要结合对话历史上下文来判断，特别是当用户在多轮对话中补充训练信息时。";
         
         const intentResponse = await fetch("https://api.minimax.io/anthropic/v1/messages", {
             method: "POST",
@@ -58,7 +58,7 @@ module.exports = async (req, res) => {
         
         if (intent === '训练记录') {
             // 步骤2：如果是训练记录，提取结构化数据
-            const extractSystemPrompt = "你是一个训练记录提取助手，请从用户输入和对话历史中提取训练记录的结构化信息。注意要结合上下文，从多轮对话中提取完整的训练信息。返回格式为JSON，包含以下字段：\n{\n  \"exercise\": \"动作名称\",\n  \"sets\": 组数,\n  \"reps\": 次数,\n  \"weight\": \"重量\",\n  \"unit\": \"单位（如kg、磅等）\"\n}\n只返回JSON，不要返回其他任何内容。";
+            const extractSystemPrompt = "你是一个训练记录提取助手，请从用户输入和对话历史中提取训练记录的结构化信息。注意要结合上下文，从多轮对话中提取完整的训练信息。例如：如果用户先说白'我做了深蹲'，然后说'做了10组'，最后说'每组10公斤'，你应该提取出完整的训练记录。只返回JSON格式，包含exercise（动作名称）、sets（组数）、reps（次数）、weight（重量）、unit（单位）字段。只返回JSON，不要返回其他任何内容。";
             
             const extractResponse = await fetch("https://api.minimax.io/anthropic/v1/messages", {
                 method: "POST",

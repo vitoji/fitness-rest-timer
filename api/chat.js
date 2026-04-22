@@ -58,7 +58,7 @@ module.exports = async (req, res) => {
         
         if (intent === '训练记录') {
             // 步骤2：如果是训练记录，提取结构化数据
-            const extractSystemPrompt = "你是一个训练记录提取助手，请从用户输入和对话历史中提取训练记录的结构化信息。注意要结合上下文，从多轮对话中提取完整的训练信息。例如：如果用户先说白'我做了深蹲'，然后说'做了10组'，最后说'每组10公斤'，你应该提取出完整的训练记录。只返回JSON格式，包含exercise（动作名称）、sets（组数）、reps（次数）、weight（重量）、unit（单位）字段。只返回JSON，不要返回其他任何内容。";
+            const extractSystemPrompt = "你是一个训练记录提取助手，请从用户输入和对话历史中提取训练记录的结构化信息。注意要结合上下文，从多轮对话中提取完整的训练信息。例如：如果用户先说白'我做了深蹲'，然后说'做了10组'，最后说'每组10公斤'，你应该提取出完整的训练记录。只返回JSON格式，包含exercise（动作名称）、sets（组数）、reps（次数）、weight（重量）、unit（单位）字段。只返回JSON，不要返回其他任何内容。即使信息不完整，也要尽可能提取你能识别的信息。";
             
             const extractResponse = await fetch("https://api.minimax.io/anthropic/v1/messages", {
                 method: "POST",

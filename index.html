@@ -907,7 +907,20 @@
         // 加载历史记录
         function loadHistory() {
             const history = localStorage.getItem('workoutHistory') || '[]';
-            const historyArray = JSON.parse(history);
+            let historyArray = JSON.parse(history);
+            
+            // 转换旧格式数据（纯字符串数组）为新格式
+            if (historyArray.length > 0 && typeof historyArray[0] === 'string') {
+                const newHistoryArray = [];
+                historyArray.forEach((item, index) => {
+                    newHistoryArray.push({
+                        record: item,
+                        timestamp: new Date().toISOString() // 为旧记录添加当前时间戳
+                    });
+                });
+                historyArray = newHistoryArray;
+                localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
+            }
             
             historyContent.innerHTML = '';
             if (historyArray.length === 0) {
@@ -949,19 +962,28 @@
                 `;
                 
                 // 格式化时间戳
-                const timestamp = new Date(item.timestamp);
-                const formattedTime = timestamp.toLocaleString('zh-CN', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
+                let formattedTime = '未知时间';
+                if (item.timestamp) {
+                    try {
+                        const timestamp = new Date(item.timestamp);
+                        formattedTime = timestamp.toLocaleString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        });
+                    } catch (e) {
+                        console.error('时间戳格式错误:', e);
+                    }
+                }
                 
+                // 确保record字段存在
                 const recordText = document.createElement('span');
                 recordText.style.cssText = 'flex: 1;';
-                recordText.innerHTML = `${index + 1}. ${item.record} <br><small style="color: #666; font-size: 12px;">${formattedTime}</small>`;
+                const recordContent = item.record || item; // 兼容旧格式
+                recordText.innerHTML = `${index + 1}. ${recordContent} <br><small style="color: #666; font-size: 12px;">${formattedTime}</small>`;
                 
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = '删除';

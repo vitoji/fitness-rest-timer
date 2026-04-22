@@ -294,8 +294,38 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>健身组间休息工具</h1>
+    <!-- 登录/注册模态框 -->
+        <div class="modal-overlay" id="authModal" style="display: flex;">
+            <div class="modal" style="max-width: 400px;">
+                <h2>👤 用户登录</h2>
+                <div id="authForm">
+                    <div style="margin-bottom: 15px; text-align: left;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">用户名</label>
+                        <input type="text" id="username" placeholder="请输入用户名" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    </div>
+                    <div style="margin-bottom: 15px; text-align: left;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">密码</label>
+                        <input type="password" id="password" placeholder="请输入密码" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <button class="modal-btn" id="loginBtn" style="width: 100%; margin-bottom: 10px;">登录</button>
+                        <button class="modal-btn" id="registerBtn" style="width: 100%; background-color: #2196F3;">注册</button>
+                    </div>
+                    <div style="text-align: center; font-size: 14px; color: #666;">
+                        <span id="authMessage"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="container" id="appContainer" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1>健身组间休息工具</h1>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="userDisplayName" style="font-weight: bold;"></span>
+                <button class="ai-submit" id="logoutBtn" style="padding: 8px 16px; font-size: 14px;">退出</button>
+            </div>
+        </div>
         
         <div class="timer" id="timer">00:00</div>
         
@@ -348,6 +378,7 @@
         let isListening = false; // 是否正在监听
         let isSpeaking = false; // 是否正在语音播报
         let currentUtterance = null; // 当前正在播放的语音对象
+        let currentUser = null; // 当前登录用户
         
         // DOM元素
         const timerElement = document.getElementById('timer');
@@ -362,6 +393,17 @@
         const historyBtn = document.getElementById('historyBtn');
         const historyContent = document.getElementById('historyContent');
         
+        // 认证相关DOM元素
+        const authModal = document.getElementById('authModal');
+        const appContainer = document.getElementById('appContainer');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const authMessage = document.getElementById('authMessage');
+        const userDisplayName = document.getElementById('userDisplayName');
+        const logoutBtn = document.getElementById('logoutBtn');
+        
         // 初始化语音识别
         function initSpeechRecognition() {
             console.log('初始化语音识别...');
@@ -370,17 +412,21 @@
                 recognition.lang = 'zh-CN';
                 recognition.continuous = false;
                 recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
                 
                 recognition.onstart = function() {
                     console.log('语音识别开始');
                     isListening = true;
                     voiceInputBtn.style.backgroundColor = '#f44336';
+                    // 显示语音识别状态提示
+                    showVoiceRecognitionStatus('正在聆听...');
                 };
                 
                 recognition.onresult = function(event) {
                     const transcript = event.results[0][0].transcript;
                     console.log('语音识别结果:', transcript);
                     aiInput.value = transcript;
+                    hideVoiceRecognitionStatus();
                     sendAIRequest();
                 };
                 
@@ -388,12 +434,25 @@
                     console.error('语音识别错误:', event.error);
                     isListening = false;
                     voiceInputBtn.style.backgroundColor = '#4CAF50';
+                    hideVoiceRecognitionStatus();
+                    
+                    // 处理常见错误
+                    if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+                        showVoiceRecognitionError('需要麦克风权限，请在浏览器设置中允许');
+                    } else if (event.error === 'no-speech') {
+                        showVoiceRecognitionError('未检测到语音，请重试');
+                    } else if (event.error === 'audio-capture') {
+                        showVoiceRecognitionError('无法访问麦克风，请检查设备');
+                    } else {
+                        showVoiceRecognitionError('语音识别失败，请重试');
+                    }
                 };
                 
                 recognition.onend = function() {
                     console.log('语音识别结束');
                     isListening = false;
                     voiceInputBtn.style.backgroundColor = '#4CAF50';
+                    hideVoiceRecognitionStatus();
                 };
                 
                 console.log('语音识别初始化成功');
@@ -401,20 +460,111 @@
                 console.warn('浏览器不支持语音识别');
                 voiceInputBtn.disabled = true;
                 voiceInputBtn.style.opacity = '0.5';
+                voiceInputBtn.title = '浏览器不支持语音识别';
             }
         }
         
+        // 显示语音识别状态
+        function showVoiceRecognitionStatus(message) {
+            let statusElement = document.getElementById('voiceStatus');
+            if (!statusElement) {
+                statusElement = document.createElement('div');
+                statusElement.id = 'voiceStatus';
+                statusElement.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background-color: rgba(0, 0, 0, 0.8);
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 20px;
+                    z-index: 9999;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                `;
+                document.body.appendChild(statusElement);
+            }
+            statusElement.textContent = message;
+            statusElement.style.display = 'block';
+        }
+        
+        // 隐藏语音识别状态
+        function hideVoiceRecognitionStatus() {
+            const statusElement = document.getElementById('voiceStatus');
+            if (statusElement) {
+                statusElement.style.display = 'none';
+            }
+        }
+        
+        // 显示语音识别错误
+        function showVoiceRecognitionError(message) {
+            let errorElement = document.getElementById('voiceError');
+            if (!errorElement) {
+                errorElement = document.createElement('div');
+                errorElement.id = 'voiceError';
+                errorElement.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background-color: rgba(244, 67, 54, 0.9);
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 20px;
+                    z-index: 9999;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                `;
+                document.body.appendChild(errorElement);
+            }
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                if (errorElement) {
+                    errorElement.style.display = 'none';
+                }
+            }, 3000);
+        }
+        
+        // 请求麦克风权限
+        function requestMicrophonePermission() {
+            return new Promise((resolve, reject) => {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(stream => {
+                            // 立即停止流，我们只是为了获取权限
+                            stream.getTracks().forEach(track => track.stop());
+                            resolve(true);
+                        })
+                        .catch(error => {
+                            console.error('麦克风权限请求失败:', error);
+                            reject(error);
+                        });
+                } else {
+                    reject(new Error('浏览器不支持媒体设备API'));
+                }
+            });
+        }
+        
         // 开始语音识别
-        function startSpeechRecognition() {
+        async function startSpeechRecognition() {
             console.log('启动语音识别...');
             if (recognition && !isListening) {
                 try {
+                    // 先请求麦克风权限
+                    await requestMicrophonePermission();
+                    console.log('麦克风权限获取成功');
+                    
                     console.log('调用recognition.start()');
                     recognition.start();
                 } catch (error) {
                     console.error('启动语音识别失败:', error);
                     isListening = false;
                     voiceInputBtn.style.backgroundColor = '#4CAF50';
+                    showVoiceRecognitionError('无法启动语音识别，请检查麦克风权限');
                 }
             } else {
                 console.log('语音识别不可用或正在运行');
@@ -427,24 +577,43 @@
                 // 停止当前正在播放的语音
                 stopSpeech();
                 
-                currentUtterance = new SpeechSynthesisUtterance(text);
-                currentUtterance.lang = 'zh-CN';
-                currentUtterance.rate = 1.0;
-                currentUtterance.pitch = 1.0;
-                currentUtterance.volume = 1.0;
-                
-                currentUtterance.onstart = function() {
-                    isSpeaking = true;
-                    voiceOutputBtn.style.backgroundColor = '#ff9800'; // 橙色表示正在播放
-                };
-                
-                currentUtterance.onend = function() {
+                try {
+                    // 检查语音合成是否被暂停
+                    if (speechSynthesis.paused) {
+                        speechSynthesis.resume();
+                    }
+                    
+                    currentUtterance = new SpeechSynthesisUtterance(text);
+                    currentUtterance.lang = 'zh-CN';
+                    currentUtterance.rate = 1.0;
+                    currentUtterance.pitch = 1.0;
+                    currentUtterance.volume = 1.0;
+                    
+                    currentUtterance.onstart = function() {
+                        isSpeaking = true;
+                        voiceOutputBtn.style.backgroundColor = '#ff9800'; // 橙色表示正在播放
+                    };
+                    
+                    currentUtterance.onend = function() {
+                        isSpeaking = false;
+                        voiceOutputBtn.style.backgroundColor = '#4CAF50'; // 恢复绿色
+                        currentUtterance = null;
+                    };
+                    
+                    currentUtterance.onerror = function(event) {
+                        console.error('语音合成错误:', event);
+                        isSpeaking = false;
+                        voiceOutputBtn.style.backgroundColor = '#4CAF50';
+                        currentUtterance = null;
+                    };
+                    
+                    speechSynthesis.speak(currentUtterance);
+                } catch (error) {
+                    console.error('语音合成失败:', error);
                     isSpeaking = false;
-                    voiceOutputBtn.style.backgroundColor = '#4CAF50'; // 恢复绿色
+                    voiceOutputBtn.style.backgroundColor = '#4CAF50';
                     currentUtterance = null;
-                };
-                
-                speechSynthesis.speak(currentUtterance);
+                }
             } else {
                 console.warn('浏览器不支持语音合成');
             }
@@ -453,15 +622,53 @@
         // 停止语音播放
         function stopSpeech() {
             if ('speechSynthesis' in window) {
-                speechSynthesis.cancel();
-                isSpeaking = false;
-                currentUtterance = null;
-                voiceOutputBtn.style.backgroundColor = '#4CAF50';
+                try {
+                    speechSynthesis.cancel();
+                    isSpeaking = false;
+                    currentUtterance = null;
+                    voiceOutputBtn.style.backgroundColor = '#4CAF50';
+                } catch (error) {
+                    console.error('停止语音播放失败:', error);
+                }
+            }
+        }
+        
+        // 暂停语音播放
+        function pauseSpeech() {
+            if ('speechSynthesis' in window && isSpeaking) {
+                try {
+                    speechSynthesis.pause();
+                    isSpeaking = false;
+                    voiceOutputBtn.style.backgroundColor = '#4CAF50';
+                } catch (error) {
+                    console.error('暂停语音播放失败:', error);
+                }
+            }
+        }
+        
+        // 恢复语音播放
+        function resumeSpeech() {
+            if ('speechSynthesis' in window && !isSpeaking) {
+                try {
+                    speechSynthesis.resume();
+                    isSpeaking = true;
+                    voiceOutputBtn.style.backgroundColor = '#ff9800';
+                } catch (error) {
+                    console.error('恢复语音播放失败:', error);
+                }
             }
         }
         
         // 初始化
         function init() {
+            // 检查用户登录状态
+            checkLoginStatus();
+            
+            // 绑定认证相关事件
+            loginBtn.addEventListener('click', handleLogin);
+            registerBtn.addEventListener('click', handleRegister);
+            logoutBtn.addEventListener('click', handleLogout);
+            
             // 初始化语音识别
             initSpeechRecognition();
             
@@ -503,6 +710,9 @@
                     const lastMessage = aiMessages.lastElementChild;
                     if (lastMessage && lastMessage.classList.contains('ai-message')) {
                         speakText(lastMessage.textContent);
+                    } else {
+                        // 如果没有AI消息，提示用户
+                        showVoiceRecognitionError('没有可播放的消息');
                     }
                 }
             });
@@ -515,6 +725,116 @@
             
             // 请求通知权限
             requestNotificationPermission();
+        }
+        
+        // 检查登录状态
+        function checkLoginStatus() {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                try {
+                    currentUser = JSON.parse(storedUser);
+                    showApp();
+                } catch (error) {
+                    console.error('解析用户数据失败:', error);
+                    currentUser = null;
+                    showAuthModal();
+                }
+            } else {
+                showAuthModal();
+            }
+        }
+        
+        // 显示认证模态框
+        function showAuthModal() {
+            authModal.style.display = 'flex';
+            appContainer.style.display = 'none';
+        }
+        
+        // 显示应用
+        function showApp() {
+            authModal.style.display = 'none';
+            appContainer.style.display = 'block';
+            userDisplayName.textContent = currentUser.username;
+        }
+        
+        // 处理登录
+        function handleLogin() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            if (!username || !password) {
+                showAuthMessage('请输入用户名和密码', 'error');
+                return;
+            }
+            
+            // 从本地存储获取用户数据
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                showAuthMessage('登录成功', 'success');
+                setTimeout(() => {
+                    showApp();
+                    loadHistory();
+                }, 1000);
+            } else {
+                showAuthMessage('用户名或密码错误', 'error');
+            }
+        }
+        
+        // 处理注册
+        function handleRegister() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            if (!username || !password) {
+                showAuthMessage('请输入用户名和密码', 'error');
+                return;
+            }
+            
+            // 从本地存储获取用户数据
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            
+            // 检查用户名是否已存在
+            if (users.some(u => u.username === username)) {
+                showAuthMessage('用户名已存在', 'error');
+                return;
+            }
+            
+            // 创建新用户
+            const newUser = {
+                id: Date.now().toString(),
+                username: username,
+                password: password
+            };
+            
+            users.push(newUser);
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            // 自动登录
+            currentUser = newUser;
+            localStorage.setItem('currentUser', JSON.stringify(newUser));
+            
+            showAuthMessage('注册成功', 'success');
+            setTimeout(() => {
+                showApp();
+                loadHistory();
+            }, 1000);
+        }
+        
+        // 处理登出
+        function handleLogout() {
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            showAuthModal();
+        }
+        
+        // 显示认证消息
+        function showAuthMessage(message, type) {
+            authMessage.textContent = message;
+            authMessage.style.color = type === 'error' ? '#f44336' : '#4CAF50';
         }
         
         // 设置时长
@@ -832,8 +1152,9 @@
                 const aiResponse = data.content;
                 
                 // 如果是训练记录，保存到本地存储
-                if (data.isWorkoutRecord && data.extractedWorkout) {
-                    const history = localStorage.getItem('workoutHistory') || '[]';
+                if (data.isWorkoutRecord && data.extractedWorkout && currentUser) {
+                    const historyKey = `workoutHistory_${currentUser.id}`;
+                    const history = localStorage.getItem(historyKey) || '[]';
                     const historyArray = JSON.parse(history);
                     // 添加时间戳
                     const workoutItem = {
@@ -841,7 +1162,7 @@
                         timestamp: new Date().toISOString() // ISO格式时间戳
                     };
                     historyArray.push(workoutItem);
-                    localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
+                    localStorage.setItem(historyKey, JSON.stringify(historyArray));
                     // 自动显示历史记录面板并更新显示
                     historyContent.style.display = 'block';
                     loadHistory();
@@ -907,7 +1228,14 @@
         // 加载历史记录
         function loadHistory() {
             console.log('加载训练记录...');
-            const history = localStorage.getItem('workoutHistory') || '[]';
+            
+            if (!currentUser) {
+                historyContent.innerHTML = '请先登录';
+                return;
+            }
+            
+            const historyKey = `workoutHistory_${currentUser.id}`;
+            const history = localStorage.getItem(historyKey) || '[]';
             let historyArray = JSON.parse(history);
             
             console.log('当前训练记录:', historyArray);
@@ -923,7 +1251,7 @@
                     });
                 });
                 historyArray = newHistoryArray;
-                localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
+                localStorage.setItem(historyKey, JSON.stringify(historyArray));
                 console.log('转换完成:', historyArray);
             }
             
@@ -949,7 +1277,7 @@
             `;
             clearButton.addEventListener('click', function() {
                 if (confirm('确定要清空所有训练记录吗？')) {
-                    localStorage.removeItem('workoutHistory');
+                    localStorage.removeItem(historyKey);
                     loadHistory();
                 }
             });
@@ -1009,7 +1337,7 @@
                 deleteButton.addEventListener('click', function() {
                     if (confirm('确定要删除这条训练记录吗？')) {
                         historyArray.splice(index, 1);
-                        localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
+                        localStorage.setItem(historyKey, JSON.stringify(historyArray));
                         loadHistory();
                     }
                 });

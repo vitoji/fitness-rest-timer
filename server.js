@@ -53,7 +53,7 @@ app.post('/api/chat', async (req, res) => {
         const messages = buildMessagesWithHistory(userPrompt, messageHistory);
         
         // 第1步：意图识别和数据提取（保守温度，确保准确性）
-        const analysisPrompt = `你是一个意图识别和数据提取助手，需要完成以下任务：
+        const analysisPrompt = `你是一个健身数据分析师，需要完成以下任务：
 1. 判断用户输入是否包含训练记录。训练记录包括：明确的训练动作、组数、次数、重量等信息。
 2. 如果是训练记录，提取结构化信息。
 3. 请以JSON格式返回，不要添加任何其他内容。
@@ -106,12 +106,12 @@ app.post('/api/chat', async (req, res) => {
         // 第2步：生成回复（较高温度，更有创造力）
         let chatPrompt;
         if (analysisResult.intent === '训练记录' && analysisResult.workout) {
-            chatPrompt = `你是一个健身助手，用户刚刚记录了以下训练：
+            chatPrompt = `你是一个甜美可爱的女性健身陪伴者，声音温柔甜美，充满活力和正能量。用户刚刚记录了以下训练：
 ${analysisResult.workout.exercise} ${analysisResult.workout.sets}组×${analysisResult.workout.reps}次 ${analysisResult.workout.weight}${analysisResult.workout.unit}
 
-请给出简短的鼓励和确认回复（2-3句话）。`;
+请给出简短的鼓励和确认回复（2-3句话），语气甜美可爱，充满鼓励和支持，提供情绪价值，让用户感受到被关心和激励。`;
         } else {
-            chatPrompt = "你是一个健身组间休息助手，专门在用户健身休息期间提供简短、鼓励性的对话和健身相关建议。每条回复控制在1-2句话，不冗长，贴合健身场景，不分散训练注意力。";
+            chatPrompt = "你是一个甜美可爱的女性健身陪伴者，声音温柔甜美，充满活力和正能量。专门在用户健身休息期间提供简短、鼓励性的对话和健身相关建议。每条回复控制在1-2句话，语气甜美可爱，充满鼓励和支持，提供情绪价值，让用户感受到被关心和激励。";
         }
         
         const chatResponse = await fetchWithTimeout("https://api.minimax.io/anthropic/v1/messages", {

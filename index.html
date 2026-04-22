@@ -906,11 +906,15 @@
         
         // 加载历史记录
         function loadHistory() {
+            console.log('加载训练记录...');
             const history = localStorage.getItem('workoutHistory') || '[]';
             let historyArray = JSON.parse(history);
             
+            console.log('当前训练记录:', historyArray);
+            
             // 转换旧格式数据（纯字符串数组）为新格式
             if (historyArray.length > 0 && typeof historyArray[0] === 'string') {
+                console.log('转换旧格式数据...');
                 const newHistoryArray = [];
                 historyArray.forEach((item, index) => {
                     newHistoryArray.push({
@@ -920,6 +924,7 @@
                 });
                 historyArray = newHistoryArray;
                 localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
+                console.log('转换完成:', historyArray);
             }
             
             historyContent.innerHTML = '';
@@ -940,6 +945,7 @@
                 cursor: pointer;
                 margin-bottom: 15px;
                 font-size: 14px;
+                width: 100%;
             `;
             clearButton.addEventListener('click', function() {
                 if (confirm('确定要清空所有训练记录吗？')) {
@@ -951,14 +957,17 @@
             
             // 显示每条记录
             historyArray.forEach((item, index) => {
+                console.log('处理记录:', item);
                 const itemElement = document.createElement('div');
                 itemElement.style.cssText = `
                     display: flex;
                     justify-content: space-between;
-                    align-items: center;
+                    align-items: flex-start;
                     padding: 10px;
                     border-bottom: 1px solid #eee;
-                    margin-bottom: 5px;
+                    margin-bottom: 10px;
+                    background-color: #f9f9f9;
+                    border-radius: 5px;
                 `;
                 
                 // 格式化时间戳
@@ -980,10 +989,10 @@
                 }
                 
                 // 确保record字段存在
-                const recordText = document.createElement('span');
-                recordText.style.cssText = 'flex: 1;';
+                const recordText = document.createElement('div');
+                recordText.style.cssText = 'flex: 1; margin-right: 10px;';
                 const recordContent = item.record || item; // 兼容旧格式
-                recordText.innerHTML = `${index + 1}. ${recordContent} <br><small style="color: #666; font-size: 12px;">${formattedTime}</small>`;
+                recordText.innerHTML = `<strong>${index + 1}. ${recordContent}</strong> <br><small style="color: #666; font-size: 12px;">${formattedTime}</small>`;
                 
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = '删除';
@@ -991,10 +1000,11 @@
                     background-color: #ff9800;
                     color: white;
                     border: none;
-                    padding: 4px 8px;
+                    padding: 6px 12px;
                     border-radius: 3px;
                     cursor: pointer;
                     font-size: 12px;
+                    white-space: nowrap;
                 `;
                 deleteButton.addEventListener('click', function() {
                     if (confirm('确定要删除这条训练记录吗？')) {

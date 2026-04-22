@@ -835,7 +835,12 @@
                 if (data.isWorkoutRecord && data.extractedWorkout) {
                     const history = localStorage.getItem('workoutHistory') || '[]';
                     const historyArray = JSON.parse(history);
-                    historyArray.push(data.extractedWorkout);
+                    // 添加时间戳
+                    const workoutItem = {
+                        record: data.extractedWorkout,
+                        timestamp: new Date().toISOString() // ISO格式时间戳
+                    };
+                    historyArray.push(workoutItem);
                     localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
                     // 自动显示历史记录面板并更新显示
                     historyContent.style.display = 'block';
@@ -910,9 +915,75 @@
                 return;
             }
             
+            // 添加清空按钮
+            const clearButton = document.createElement('button');
+            clearButton.textContent = '清空所有记录';
+            clearButton.style.cssText = `
+                background-color: #f44336;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-bottom: 15px;
+                font-size: 14px;
+            `;
+            clearButton.addEventListener('click', function() {
+                if (confirm('确定要清空所有训练记录吗？')) {
+                    localStorage.removeItem('workoutHistory');
+                    loadHistory();
+                }
+            });
+            historyContent.appendChild(clearButton);
+            
+            // 显示每条记录
             historyArray.forEach((item, index) => {
                 const itemElement = document.createElement('div');
-                itemElement.textContent = `${index + 1}. ${item}`;
+                itemElement.style.cssText = `
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 10px;
+                    border-bottom: 1px solid #eee;
+                    margin-bottom: 5px;
+                `;
+                
+                // 格式化时间戳
+                const timestamp = new Date(item.timestamp);
+                const formattedTime = timestamp.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                const recordText = document.createElement('span');
+                recordText.style.cssText = 'flex: 1;';
+                recordText.innerHTML = `${index + 1}. ${item.record} <br><small style="color: #666; font-size: 12px;">${formattedTime}</small>`;
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '删除';
+                deleteButton.style.cssText = `
+                    background-color: #ff9800;
+                    color: white;
+                    border: none;
+                    padding: 4px 8px;
+                    border-radius: 3px;
+                    cursor: pointer;
+                    font-size: 12px;
+                `;
+                deleteButton.addEventListener('click', function() {
+                    if (confirm('确定要删除这条训练记录吗？')) {
+                        historyArray.splice(index, 1);
+                        localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
+                        loadHistory();
+                    }
+                });
+                
+                itemElement.appendChild(recordText);
+                itemElement.appendChild(deleteButton);
                 historyContent.appendChild(itemElement);
             });
         }

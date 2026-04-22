@@ -792,37 +792,11 @@
             }
         }
         
-        // 检测是否是训练记录
-        function isWorkoutRecord(text) {
-            // 训练记录的常见模式
-            const workoutPatterns = [
-                /^\s*(\S+)\s*(\d+)\s*(kg|g|lb|磅|公斤)?\s*[×x]\s*(\d+)\s*$/i, // 如：卧推 40kg×10
-                /^\s*(\S+)\s*(\d+)\s*(组|组次)\s*(\d+)\s*(次|个)\s*$/i, // 如：深蹲 3组10次
-                /^\s*(\S+)\s*:\s*(\d+)\s*(kg|g|lb|磅|公斤)?\s*\s*(\d+)\s*(次|个)\s*$/i, // 如：硬拉: 100kg 8次
-                /^\s*我刚才做了\s*(\d+)\s*组\s*(\S+)\s*，?\s*每(组|次)?\s*(重量是)?\s*(\d+)\s*(公斤|kg|磅|lb)?\s*$/i, // 如：我刚才做了10组深蹲，每组重量是10公斤
-                /^\s*做了\s*(\d+)\s*组\s*(\S+)\s*，?\s*每(组|次)?\s*(重量是)?\s*(\d+)\s*(公斤|kg|磅|lb)?\s*$/i, // 如：做了10组深蹲，每组重量是10公斤
-            ];
-            
-            return workoutPatterns.some(pattern => pattern.test(text));
-        }
-        
-        // 提取训练记录
-        function extractWorkoutRecord(text) {
-            return text.trim();
-        }
-        
         // 调用后端API代理
         async function callMinimaxAPI(systemPrompt, userPrompt) {
             try {
                 // 显示加载状态
                 showLoadingIndicator();
-                
-                // 构建消息历史
-                const messages = [
-                    { role: "system", content: systemPrompt },
-                    ...aiMessageHistory,
-                    { role: "user", content: userPrompt }
-                ];
                 
                 // 调用后端代理API
                 const response = await fetch("/api/chat", {
@@ -831,7 +805,6 @@
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        systemPrompt: systemPrompt,
                         userPrompt: userPrompt,
                         messageHistory: aiMessageHistory
                     })
@@ -853,31 +826,22 @@
                 }
                 const aiResponse = data.content;
                 
-                // 检测是否是训练记录并保存
-                if (isWorkoutRecord(userPrompt)) {
-                    const workoutRecord = extractWorkoutRecord(userPrompt);
+                // 如果是训练记录，保存到本地存储
+                if (data.isWorkoutRecord && data.extractedWorkout) {
                     const history = localStorage.getItem('workoutHistory') || '[]';
                     const historyArray = JSON.parse(history);
-                    historyArray.push(workoutRecord);
+                    historyArray.push(data.extractedWorkout);
                     localStorage.setItem('workoutHistory', JSON.stringify(historyArray));
                     // 自动显示历史记录面板并更新显示
                     historyContent.style.display = 'block';
                     loadHistory();
-                    // 在AI回复中添加确认信息
-                    const confirmedResponse = aiResponse + ' 📝 训练记录已保存';
-                    addAIMessage(confirmedResponse);
-                } else {
-                    // 隐藏加载状态
-                    hideLoadingIndicator();
-                    
-                    // 添加AI消息
-                    addAIMessage(aiResponse);
                 }
                 
-                // 隐藏加载状态（如果还没隐藏）
-                if (loadingElement) {
-                    hideLoadingIndicator();
-                }
+                // 隐藏加载状态
+                hideLoadingIndicator();
+                
+                // 添加AI消息
+                addAIMessage(aiResponse);
                 
                 // 更新消息历史
                 aiMessageHistory.push({ role: "user", content: userPrompt });

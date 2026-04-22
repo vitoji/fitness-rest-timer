@@ -25,7 +25,7 @@ app.post('/api/chat', async (req, res) => {
         // 设置响应超时
         const timeoutId = setTimeout(() => {
             res.status(504).json({ error: '请求超时，请稍后重试' });
-        }, 15000);
+        }, 20000);
         
         const { userPrompt, messageHistory } = req.body;
         
@@ -50,22 +50,21 @@ app.post('/api/chat', async (req, res) => {
             return messages;
         };
         
-        // 优化：使用单个API调用完成意图识别和处理
-        const systemPrompt = `你是一个健身助手，需要完成以下任务：
-1. 首先判断用户输入是否包含训练记录。训练记录包括：明确的训练动作、组数、次数、重量等信息。
-2. 如果是训练记录：
-   - 提取结构化信息，包括exercise（动作名称）、sets（组数）、reps（次数）、weight（重量）、unit（单位）
-   - 生成简短的鼓励和确认回复（2-3句话）
-   - 返回格式：{"intent": "训练记录", "workout": {"exercise": "动作", "sets": 组数, "reps": 次数, "weight": "重量", "unit": "单位"}, "response": "回复内容"}
-3. 如果是闲聊：
-   - 生成简短的健身相关回复（1-2句话）
-   - 返回格式：{"intent": "闲聊", "response": "回复内容"}
-
-请严格按照指定格式返回JSON，不要添加任何其他内容。`;
-        
         const messages = buildMessagesWithHistory(userPrompt, messageHistory);
         
-        const response = await fetchWithTimeout("https://api.minimax.io/anthropic/v1/messages", {
+        // 第1步：意图识别和数据提取（保守温度，确保准确性）
+        const analysisPrompt = `你是一个意图识别和数据提取助手，需要完成以下任务：
+1. 判断用户输入是否包含训练记录。训练记录包括：明确的训练动作、组数、次数、重量等信息。
+2. 如果是训练记录，提取结构化信息。
+3. 请以JSON格式返回，不要添加任何其他内容。
+
+训练记录返回格式：
+{"intent": "训练记录", "workout": {"exercise": "动作名称", "sets": 组数, "reps": 次数, "weight": "重量", "unit": "单位"}}
+
+闲聊返回格式：
+{"intent": "闲聊"}`;
+        
+        const analysisResponse = await fetchWithTimeout("https://api.minimax.io/anthropic/v1/messages", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -73,50 +72,89 @@ app.post('/api/chat', async (req, res) => {
             },
             body: JSON.stringify({
                 model: "MiniMax-M2.7",
-                system: systemPrompt,
+                system: analysisPrompt,
                 messages: messages,
-                max_tokens: 800,
-                temperature: 0.7
+                max_tokens: 400,
+                temperature: 0.1
             })
         });
         
-        if (!response.ok) {
-            throw new Error(`API调用失败: ${response.status}`);
+        if (!analysisResponse.ok) {
+            throw new Error(`分析API调用失败: ${analysisResponse.status}`);
         }
         
-        const data = await response.json();
-        let responseText = '';
-        if (data.content && data.content.length > 0) {
-            for (const block of data.content) {
+        const analysisData = await analysisResponse.json();
+        let analysisText = '';
+        if (analysisData.content && analysisData.content.length > 0) {
+            for (const block of analysisData.content) {
                 if (block.type === 'text') {
-                    responseText += block.text;
+                    analysisText += block.text;
                 }
             }
         }
         
-        console.log('API响应:', responseText);
+        console.log('分析响应:', analysisText);
         
-        // 解析响应
-        let result;
+        // 解析分析结果
+        let analysisResult;
         try {
-            result = JSON.parse(responseText);
+            analysisResult = JSON.parse(analysisText);
         } catch (e) {
-            throw new Error('API响应格式错误');
+            analysisResult = { intent: '闲聊' };
         }
         
-        if (result.intent === '训练记录' && result.workout) {
-            // 构建标准化的训练记录文本
-            const workoutRecord = `${result.workout.exercise} ${result.workout.sets}组×${result.workout.reps}次 ${result.workout.weight}${result.workout.unit}`;
-            
+        // 第2步：生成回复（较高温度，更有创造力）
+        let chatPrompt;
+        if (analysisResult.intent === '训练记录' && analysisResult.workout) {
+            chatPrompt = `你是一个健身助手，用户刚刚记录了以下训练：
+${analysisResult.workout.exercise} ${analysisResult.workout.sets}组×${analysisResult.workout.reps}次 ${analysisResult.workout.weight}${analysisResult.workout.unit}
+
+请给出简短的鼓励和确认回复（2-3句话）。`;
+        } else {
+            chatPrompt = "你是一个健身组间休息助手，专门在用户健身休息期间提供简短、鼓励性的对话和健身相关建议。每条回复控制在1-2句话，不冗长，贴合健身场景，不分散训练注意力。";
+        }
+        
+        const chatResponse = await fetchWithTimeout("https://api.minimax.io/anthropic/v1/messages", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": process.env.MINIMAX_API_KEY
+            },
+            body: JSON.stringify({
+                model: "MiniMax-M2.7",
+                system: chatPrompt,
+                messages: messages,
+                max_tokens: 400,
+                temperature: 0.7
+            })
+        });
+        
+        if (!chatResponse.ok) {
+            throw new Error(`聊天API调用失败: ${chatResponse.status}`);
+        }
+        
+        const chatData = await chatResponse.json();
+        let chatMessage = '';
+        if (chatData.content && chatData.content.length > 0) {
+            for (const block of chatData.content) {
+                if (block.type === 'text') {
+                    chatMessage += block.text;
+                }
+            }
+        }
+        
+        // 返回结果
+        if (analysisResult.intent === '训练记录' && analysisResult.workout) {
+            const workoutRecord = `${analysisResult.workout.exercise} ${analysisResult.workout.sets}组×${analysisResult.workout.reps}次 ${analysisResult.workout.weight}${analysisResult.workout.unit}`;
             res.json({
-                content: result.response,
+                content: chatMessage,
                 isWorkoutRecord: true,
                 extractedWorkout: workoutRecord,
-                workoutData: result.workout
+                workoutData: analysisResult.workout
             });
         } else {
             res.json({
-                content: result.response,
+                content: chatMessage,
                 isWorkoutRecord: false
             });
         }
